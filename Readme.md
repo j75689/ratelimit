@@ -7,6 +7,7 @@ make run
 ```bash
 for (( i=0 ; i<70 ; i++ )); do; curl http://localhost:8080/ratelimit && echo ""; done
 ```
+![local-test](local-test.png)
 
 ## Demo
 ```bash

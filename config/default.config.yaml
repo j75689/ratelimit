@@ -1,0 +1,16 @@
+logger:
+  level: INFO
+  format: console # json, console
+
+http:
+  port: 8080
+
+ratelimit:
+  driver: memory # memory, redis
+  limit: 60
+  frequency: 1m
+  # redis_option:
+  #   host: localhost
+  #   port: 6379
+  #   db: 1
+    

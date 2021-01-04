@@ -16,7 +16,6 @@ func (httpServer *HttpServer) HandleRatelimitMiddleware(c *gin.Context) {
 	ip := c.ClientIP()
 	token, err := httpServer.ratelimter.Acquire(ip)
 	if err != nil {
-		httpServer.ipMap.Store(ip, 0)
 		c.String(http.StatusTooManyRequests, "Error: Too Many Request, IP: %s", ip)
 		c.Abort()
 		return

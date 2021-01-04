@@ -2,7 +2,6 @@ package http
 
 import (
 	"ratelimit/pkg/ratelimit"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,7 +9,6 @@ import (
 type HttpServer struct {
 	*gin.Engine
 	ratelimter ratelimit.Ratelimiter
-	ipMap      sync.Map
 }
 
 func (server *HttpServer) setRouter() {
@@ -22,7 +20,6 @@ func NewHttpServer(ratelimiter ratelimit.Ratelimiter) *HttpServer {
 	httpServer := &HttpServer{
 		Engine:     gin.Default(),
 		ratelimter: ratelimiter,
-		ipMap:      sync.Map{},
 	}
 	httpServer.setRouter()
 

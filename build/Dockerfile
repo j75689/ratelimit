@@ -10,7 +10,7 @@ RUN go build -mod=readonly -v -o server main.go
 FROM alpine:3
 
 RUN apk add --no-cache ca-certificates
-RUN mkdir -p /Tmaster
+RUN mkdir -p /ratelimit-sample
 WORKDIR /ratelimit-sample
 
 COPY --from=builder /ratelimit-sample/server /ratelimit-sample/server

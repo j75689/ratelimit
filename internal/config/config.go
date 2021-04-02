@@ -29,10 +29,10 @@ type RateLimitConfig struct {
 	Driver      supported.SupportedDriver `mapstructure:"driver"`
 	Limit       int64                     `mapstructure:"limit"`
 	Frequency   time.Duration             `mapstructure:"frequency"`
-	RedisOption RedisOptionConffig        `mapstructure:"redis_option"`
+	RedisOption RedisOptionConfig         `mapstructure:"redis_option"`
 }
 
-type RedisOptionConffig struct {
+type RedisOptionConfig struct {
 	Host         string        `mapstructure:"host"`
 	Port         uint          `mapstructure:"port"`
 	DB           int           `mapstructure:"db"`
@@ -40,6 +40,7 @@ type RedisOptionConffig struct {
 	MinIdleConns int           `mapstructure:"min_idle_conns"`
 	MaxPoolSize  int           `mapstructure:"max_pool_size"`
 	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
+	MaxRetry     int           `mapstructure:"max_retry"`
 }
 
 func NewConfig(configPath string) (Config, error) {
@@ -64,6 +65,7 @@ func NewConfig(configPath string) (Config, error) {
 	v.SetDefault("ratelimit.redis_option.min_idle_conns", 10)
 	v.SetDefault("ratelimit.redis_option.max_pool_size", 20)
 	v.SetDefault("ratelimit.redis_option.dial_timeout", 15*time.Second)
+	v.SetDefault("ratelimit.redis_option.max_retry", 1000)
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.ReadConfig(file)

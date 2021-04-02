@@ -7,10 +7,11 @@ http:
 
 ratelimit:
   driver: memory # memory, redis
-  limit: 60
-  frequency: 1m
-  # redis_option:
-  #   host: localhost
-  #   port: 6379
-  #   db: 1
+  limit: 6000
+  frequency: 10s
+  redis_option:
+    host: localhost
+    port: 6379
+    db: 1
+    max_retry: 1000
     

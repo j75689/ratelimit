@@ -19,6 +19,7 @@ func InitRateLimiter(config config.Config) (ratelimit.Ratelimiter, error) {
 			MinIdleConns: config.RateLimit.RedisOption.MinIdleConns,
 			MaxPoolSize:  config.RateLimit.RedisOption.MaxPoolSize,
 			DialTimeout:  config.RateLimit.RedisOption.DialTimeout,
+			MaxRetry:     config.RateLimit.RedisOption.MaxRetry,
 		}),
 	)
 }

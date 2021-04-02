@@ -1,11 +1,12 @@
 package memory
 
 import (
-	"errors"
 	"fmt"
 	"ratelimit/pkg/ratelimit"
 	"sync"
 	"time"
+
+	"ratelimit/pkg/ratelimit/errors"
 
 	"github.com/patrickmn/go-cache"
 )
@@ -80,7 +81,7 @@ func (ratelimiter *MemoryRateLimiter) AcquireN(key interface{}, n int64) ([]rate
 	}()
 
 	if cacheItem.tokens < n {
-		return nil, errors.New("not enough tokens")
+		return nil, errors.ErrNotEnoughToken
 	}
 
 	cacheItem.tokens--

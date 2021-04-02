@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"ratelimit/pkg/ratelimit"
+	ratelimiterErrs "ratelimit/pkg/ratelimit/errors"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ type RedisRateLimiter struct {
 	client    *redis.Client
 	frequency time.Duration
 	limit     int64
+	maxRetry  int
 }
 
 func (ratelimiter *RedisRateLimiter) SetFrequency(frequency time.Duration) error {
@@ -59,6 +61,7 @@ func (ratelimiter *RedisRateLimiter) WithRedis(redisOption ratelimit.RedisOption
 		return err
 	}
 	ratelimiter.client = client
+	ratelimiter.maxRetry = redisOption.MaxRetry
 	return nil
 }
 
@@ -74,41 +77,62 @@ func (ratelimiter *RedisRateLimiter) AcquireN(key interface{}, n int64) ([]ratel
 	defer ratelimiter.Unlock()
 	cacheKey := fmt.Sprint(key)
 	cacheItem := _CacheItem{}
+	ratelimitTokens := make([]ratelimit.Token, n)
 	ctx, cancel := context.WithTimeout(context.Background(), ratelimiter.frequency)
 	defer cancel()
-	data, _ := ratelimiter.client.Get(ctx, cacheKey).Result()
-	json.Unmarshal([]byte(data), &cacheItem)
-	if time.Now().After(cacheItem.ExpiredAt) {
-		cacheItem = _CacheItem{
-			Tokens:    ratelimiter.limit,
-			ExpiredAt: time.Now().Add(ratelimiter.frequency),
-		}
-	}
-	defer func() {
-		data, err := json.Marshal(cacheItem)
-		if err != nil {
-			ratelimiter.client.Del(ctx, cacheKey)
-			return
-		}
-		err = ratelimiter.client.Set(ctx, cacheKey, string(data), ratelimiter.frequency).Err()
-		if err != nil {
-			ratelimiter.client.Del(ctx, cacheKey)
-		}
-	}()
 
-	if cacheItem.Tokens < n {
-		return nil, errors.New("not enough tokens")
+	txf := func(tx *redis.Tx) error {
+		defer tx.Close(ctx)
+		data, _ := tx.Get(ctx, cacheKey).Result()
+		json.Unmarshal([]byte(data), &cacheItem)
+		if time.Now().After(cacheItem.ExpiredAt) {
+			cacheItem = _CacheItem{
+				Tokens:    ratelimiter.limit,
+				ExpiredAt: time.Now().Add(ratelimiter.frequency),
+			}
+		}
+
+		if cacheItem.Tokens < n {
+			return ratelimiterErrs.ErrNotEnoughToken
+		}
+
+		cacheItem.Tokens--
+		for i := int64(0); i < n; i++ {
+			ratelimitTokens[i] = &Token{
+				expiredAt: cacheItem.ExpiredAt,
+				number:    ratelimiter.limit - cacheItem.Tokens + i,
+			}
+		}
+
+		_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			data, err := json.Marshal(cacheItem)
+			if err != nil {
+				return pipe.Del(ctx, cacheKey).Err()
+			}
+			err = pipe.Set(ctx, cacheKey, string(data), ratelimiter.frequency).Err()
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
-	cacheItem.Tokens--
-	ratelimitTokens := make([]ratelimit.Token, n)
-	for i := int64(0); i < n; i++ {
-		ratelimitTokens[i] = &Token{
-			expiredAt: cacheItem.ExpiredAt,
-			number:    ratelimiter.limit - cacheItem.Tokens + i,
+	for i := 0; i < ratelimiter.maxRetry; i++ {
+		err := ratelimiter.client.Watch(ctx, txf, cacheKey)
+		if errors.Is(err, redis.TxFailedErr) {
+			continue
 		}
+		return ratelimitTokens, err
 	}
-	return ratelimitTokens, nil
+
+	return nil, ratelimiterErrs.ErrNotEnoughToken
 }
 
 type Token struct {

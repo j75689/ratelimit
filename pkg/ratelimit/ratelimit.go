@@ -46,6 +46,7 @@ type RedisOption struct {
 	MinIdleConns int
 	MaxPoolSize  int
 	DialTimeout  time.Duration
+	MaxRetry     int
 }
 
 func WithRedis(redis RedisOption) Option {

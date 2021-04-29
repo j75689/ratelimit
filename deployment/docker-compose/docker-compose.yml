@@ -1,0 +1,20 @@
+version: '3.4'
+services:
+    server:
+        image: j75689/ratelimit
+        build:
+            context: ../../
+            dockerfile: build/Dockerfile
+        command: http
+        ports: 
+            - 8080:8080
+        environment: 
+           - RATELIMIT_DRIVER=redis
+           - RATELIMIT_LIMIT=100
+           - RATELIMIT_FREQUENCY=1m
+           - RATELIMIT_REDIS_OPTION_HOST=redis
+           - RATELIMIT_REDIS_OPTION_PORT=6379
+        depends_on:
+            - redis
+    redis:
+        image: redis
